@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools-scm>=8.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+
+name = "arcgis-enterprise-clone-content"
+
+version = "0.0.0"
+
+authors = [
+  { name="Joel McCune (https://github.com/knu2xs)"},
+]
+
+description = "Useful tooling for cloning ArcGIS Enterprise content."
+
+readme = "README.md"
+
+requires-python = ">=3.9"
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+
+
+license = {text = "Apache-2.0"}
+
+
+dependencies = [
+    "arcgis>=2.2.0",
+    "numpy>=1.7",
+    "pandas>=1.0.5",
+    "pyarrow>=1.0.0"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["arcgis_cloning"]
