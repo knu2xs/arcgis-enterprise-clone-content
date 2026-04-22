@@ -1,5 +1,5 @@
 __title__ = "arcgis-enterprise-clone-content"
-__version__ = "0.1.0.dev0"
+__version__ = "0.1.0"
 __author__ = "Joel McCune (https://github.com/knu2xs)"
 
 __license__ = "Apache 2.0"
