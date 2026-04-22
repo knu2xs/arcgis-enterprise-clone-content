@@ -60,7 +60,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # --- Log file setup (FR-002, FR-003) ---
-    date_string = datetime.now().strftime("%y%m%d%H%M")  # YYMMDDHHMM
+    date_string = datetime.now().strftime("%Y%m%d%H%M")  # YYYYMMDDHHMM
     log_dir = DIR_PRJ / 'data' / 'logs'
     log_dir.mkdir(parents=True, exist_ok=True)
     log_file = log_dir / f'clone_content_{date_string}.log'
