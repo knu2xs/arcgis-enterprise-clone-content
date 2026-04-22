@@ -5,6 +5,7 @@ easily be modified to support any testing framework.
 
 import importlib
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 import sys
 
@@ -113,6 +114,11 @@ def _make_gis(url: str, items=None, folders=None):
     gis.content.search.return_value = items if items is not None else []
     gis.users.me.folders = folders if folders is not None else []
     return gis
+
+
+def _make_folder(folder_id: str, title: str):
+    """Create a folder-like object matching ArcGIS API attribute access."""
+    return SimpleNamespace(id=folder_id, title=title)
 
 
 # ---------------------------------------------------------------------------
@@ -307,7 +313,7 @@ def test_migrate_content_creates_folder_in_destination():
     src = _make_gis(
         "https://src.example.com",
         items=[item],
-        folders=[{"id": "folder123", "title": "My Folder"}],
+        folders=[_make_folder("folder123", "My Folder")],
     )
     # Destination has no folders yet
     dst = _make_gis("https://dst.example.com", folders=[])
@@ -350,7 +356,7 @@ def test_migrate_content_builds_source_folder_map_once():
         _make_item("Map B", "Web Map", "id_b", owner_folder="folder123"),
     ]
     src = _make_gis("https://src.example.com", items=items)
-    src_user = _SourceUser([{"id": "folder123", "title": "My Folder"}])
+    src_user = _SourceUser([_make_folder("folder123", "My Folder")])
     src.users.me = src_user
     dst = _make_gis("https://dst.example.com")
 

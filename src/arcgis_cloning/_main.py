@@ -166,7 +166,7 @@ def _ensure_folder(dest_gis: GIS, folder_name: str | None) -> None:
     """
     if folder_name is None:
         return
-    existing = {f["title"] for f in dest_gis.users.me.folders}
+    existing = {f.title for f in dest_gis.users.me.folders}
     if folder_name in existing:
         logger.debug(f"Folder '{folder_name}' already exists in destination; skipping creation")
     else:
@@ -294,7 +294,7 @@ def migrate_content(
         dest_index = _build_dest_index(dest_gis)
         logger.debug(f"Resume mode active: {len(dest_index)} items already in destination")
 
-    src_folder_map = {f["id"]: f["title"] for f in src_gis.users.me.folders}
+    src_folder_map = {f.id: f.title for f in src_gis.users.me.folders}
     logger.debug(f"Source folder map built: {len(src_folder_map)} folders")
 
     # --- Per-item migration loop with progress tracking ---
