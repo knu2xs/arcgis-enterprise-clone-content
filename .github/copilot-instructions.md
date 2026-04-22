@@ -1,4 +1,4 @@
-# AGENTS.md
+﻿# AGENTS.md
 
 ## AI Code Assistant Guidelines for This Project
 
