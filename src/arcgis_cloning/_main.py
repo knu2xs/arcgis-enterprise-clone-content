@@ -138,12 +138,12 @@ def _build_dest_index(dest_gis: GIS) -> set[tuple[str, str]]:
     return index
 
 
-def _resolve_folder_name(src_item: object, src_gis: GIS) -> str | None:
+def _resolve_folder_name(src_item: object, folder_id_to_name: dict[str, str]) -> str | None:
     """Resolve the folder name for a source item from its ``ownerFolder`` ID.
 
     Args:
         src_item: Source ``arcgis.gis.Item`` object.
-        src_gis: Authenticated source ``GIS`` instance (used to look up folder names).
+        folder_id_to_name: Pre-built mapping of source folder IDs to folder names.
 
     Returns:
         str | None: Folder name string, or ``None`` if the item is at the root level.
@@ -152,7 +152,6 @@ def _resolve_folder_name(src_item: object, src_gis: GIS) -> str | None:
     if folder_id is None:
         logger.debug(f"Item '{src_item.title}' is at root (no folder)")
         return None
-    folder_id_to_name = {f["id"]: f["title"] for f in src_gis.users.me.folders}
     name = folder_id_to_name.get(folder_id)
     logger.debug(f"Item '{src_item.title}' resolved to folder '{name}' (id={folder_id})")
     return name
@@ -295,6 +294,9 @@ def migrate_content(
         dest_index = _build_dest_index(dest_gis)
         logger.debug(f"Resume mode active: {len(dest_index)} items already in destination")
 
+    src_folder_map = {f["id"]: f["title"] for f in src_gis.users.me.folders}
+    logger.debug(f"Source folder map built: {len(src_folder_map)} folders")
+
     # --- Per-item migration loop with progress tracking ---
     url_rows: list[dict] = []
     for n, item in enumerate(tqdm(items, total=total, desc="Migrating items"), start=1):
@@ -313,7 +315,7 @@ def migrate_content(
             continue
 
         # Mirror source folder structure
-        folder_name = _resolve_folder_name(item, src_gis)
+        folder_name = _resolve_folder_name(item, src_folder_map)
         _ensure_folder(dest_gis, folder_name)
 
         logger.info(f"Migrating item {n} of {total}: {title} ({item_type})")
