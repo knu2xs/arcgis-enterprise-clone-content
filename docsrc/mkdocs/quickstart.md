@@ -66,7 +66,7 @@ environments:
 
 ---
 
-## Step 3b — Run the migration (CLI)
+## Step 3a — Run the migration (CLI)
 
 From the project root:
 
@@ -100,7 +100,7 @@ INFO  Migration complete: migrated=42, skipped=0, failed=0
 
 ---
 
-## Step 3a — Run the migration (Python API)
+## Step 3b — Run the migration (Python API)
 
 You can also call `migrate_content()` directly from Python:
 

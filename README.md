@@ -32,6 +32,10 @@ Key capabilities:
 
 **1. Configure credentials**
 
+Copy the secrets template to a new file protected by `.gitignore` so it will not be 
+committed to version control. This protects your portal credentials while allowing 
+you to customize them for your environment.
+
 ```bash
 cp config/secrets_template.yml config/secrets.yml
 ```
@@ -52,20 +56,7 @@ destination:
   password: "your_destination_password"
 ```
 
-**2. (Optional) Adjust portal environment names**
-
-The default source and destination environment keys are `source` and `destination`,
-matching `secrets.yml`. To use different names, edit `config/config.yml`:
-
-```yaml
-environments:
-  default:
-    migration:
-      source_env: "source"       # must match a key in secrets.yml
-      destination_env: "destination"
-```
-
-**3. Run the migration (CLI)**
+**2. Run the migration (CLI)**
 
 ```bash
 make data
