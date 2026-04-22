@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Union
 from pathlib import Path
 
 import pandas as pd
+from tqdm import tqdm
 
 from .utils import get_logger
 from .config import load_secrets
@@ -272,8 +273,8 @@ def migrate_content(
         dest_index = _build_dest_index(dest_gis)
         logger.debug(f"Resume mode active: {len(dest_index)} items already in destination")
 
-    # --- Per-item migration loop ---
-    for n, item in enumerate(items, start=1):
+    # --- Per-item migration loop with progress tracking ---
+    for n, item in enumerate(tqdm(items, start=1, total=total, desc="Migrating items"), start=1):
         title = item.title
         item_type = item.type
         item_id = item.itemid
