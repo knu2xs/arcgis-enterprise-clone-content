@@ -19,16 +19,31 @@ the ``PROJECT_ENV`` environment variable — to select the active environment.
 
 Usage::
 
-    from arcgis_cloning.config import config, secrets, ENVIRONMENT
+    from arcgis_cloning.config import config, secrets, ENVIRONMENT, load_config, load_secrets
 
-    # dot-notation access
+    # dot-notation access (singleton loaded for the default 'source' portal)
     log_level = config.logging.level
 
     # dict-style access
     input_path = config["data"]["input"]
 
-    # secrets (loaded from config/secrets.yml)
-    gis_url = secrets.esri.gis_url
+    # Per-portal clone pattern — load source and destination explicitly:
+    source_cfg = load_config(environment="source")
+    source_sec = load_secrets()
+    dest_cfg   = load_config(environment="destination")
+    dest_sec   = load_secrets()
+
+    # Access portal credentials — profile takes precedence over url/username/password
+    # Profile (ArcGIS named credential store):
+    if source_sec.source.profile:
+        source_gis = GIS(profile=source_sec.source.profile)
+    else:
+        source_gis = GIS(source_sec.source.url, source_sec.source.username, source_sec.source.password)
+
+    if dest_sec.destination.profile:
+        dest_gis = GIS(profile=dest_sec.destination.profile)
+    else:
+        dest_gis = GIS(dest_sec.destination.url, dest_sec.destination.username, dest_sec.destination.password)
 
     # check current environment
     print(f"Running in {ENVIRONMENT} mode")
@@ -54,9 +69,9 @@ _SECRETS_FILE: str = "secrets.yml"
 
 # ---------------------------------------------------------------------------
 # Active environment — change this value or set the PROJECT_ENV env var
-# to switch between environments defined in config.yml
+# to switch between portal environments defined in config.yml
 # ---------------------------------------------------------------------------
-ENVIRONMENT: str = os.environ.get("PROJECT_ENV", "dev")
+ENVIRONMENT: str = os.environ.get("PROJECT_ENV", "source")
 
 
 # ---------------------------------------------------------------------------
@@ -214,7 +229,7 @@ def load_config(
     environments = raw.pop("environments", {})
 
     # extract the default section (if any) before validation
-    default_settings = environments.pop("default", {})
+    default_settings = environments.pop("default", None) or {}
 
     if env not in environments:
         available = ", ".join(sorted(environments.keys())) or "(none)"
@@ -223,7 +238,7 @@ def load_config(
             f"Available environments in config.yml: {available}"
         )
 
-    env_settings = environments[env]
+    env_settings = environments[env] or {}
 
     # three-way merge: top-level → default → env-specific
     merged = _deep_merge(raw, default_settings)
