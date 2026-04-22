@@ -367,3 +367,130 @@ def test_make_data_preflight_failure_exits_with_code_1():
                     _sys.exit(1)
             assert exc_info.value.code == 1
 
+
+# ---------------------------------------------------------------------------
+# Feature 005 — CSV URL mapping output (T009–T013)
+# ---------------------------------------------------------------------------
+
+def _make_item_with_url(
+    title: str,
+    item_type: str,
+    item_id: str = "abc123",
+    owner_folder=None,
+    url: str | None = "https://src.example.com/items/abc123",
+):
+    """Extend _make_item to set an explicit .url attribute."""
+    item = _make_item(title, item_type, item_id, owner_folder)
+    item.url = url
+    return item
+
+
+def test_migrate_content_writes_csv_for_migrated_items(tmp_path):
+    """T009: CSV is created with correct columns and one row per successfully migrated item."""
+    import pandas as pd
+
+    src_url = "https://src.example.com/items/abc123"
+    dst_url = "https://dst.example.com/items/xyz789"
+
+    item = _make_item_with_url("Map A", "Web Map", "abc123", url=src_url)
+
+    cloned_item = MagicMock()
+    cloned_item.url = dst_url
+
+    src = _make_gis("https://src.example.com", items=[item])
+    dst = _make_gis("https://dst.example.com")
+    dst.content.clone_items.return_value = [cloned_item]
+
+    csv_out = tmp_path / "out.csv"
+    result = migrate_content(source_gis=src, destination_gis=dst, url_csv_path=csv_out)
+
+    assert csv_out.exists()
+    df = pd.read_csv(csv_out)
+    assert list(df.columns) == ["name", "type", "original_url", "updated_url"]
+    assert len(df) == 1
+    assert df.iloc[0]["name"] == "Map A"
+    assert df.iloc[0]["type"] == "Web Map"
+    assert df.iloc[0]["original_url"] == src_url
+    assert df.iloc[0]["updated_url"] == dst_url
+    assert result.migrated == 1
+
+
+def test_migrate_content_no_csv_when_path_none(tmp_path):
+    """T010: No CSV file is created when url_csv_path is not provided."""
+    item = _make_item_with_url("Map A", "Web Map")
+    src = _make_gis("https://src.example.com", items=[item])
+    dst = _make_gis("https://dst.example.com")
+
+    migrate_content(source_gis=src, destination_gis=dst)
+
+    assert list(tmp_path.glob("*.csv")) == []
+
+
+def test_migrate_content_csv_header_only_when_all_skipped(tmp_path):
+    """T011: When all items are skipped in resume mode the CSV contains only the header row."""
+    import pandas as pd
+
+    item = _make_item_with_url("Map A", "Web Map", "id_a")
+    dest_item = _make_item_with_url("Map A", "Web Map", "dst_a")
+
+    src = _make_gis("https://src.example.com", items=[item])
+    dst = _make_gis("https://dst.example.com", items=[dest_item])
+
+    csv_out = tmp_path / "out.csv"
+    result = migrate_content(source_gis=src, destination_gis=dst, resume=True, url_csv_path=csv_out)
+
+    assert csv_out.exists()
+    df = pd.read_csv(csv_out)
+    assert list(df.columns) == ["name", "type", "original_url", "updated_url"]
+    assert len(df) == 0
+    assert result.skipped == 1
+    assert result.migrated == 0
+
+
+def test_migrate_content_raises_on_missing_csv_directory(tmp_path):
+    """T012: ValueError is raised before migration begins when the CSV parent dir is absent."""
+    import pytest
+
+    item = _make_item_with_url("Map A", "Web Map")
+    src = _make_gis("https://src.example.com", items=[item])
+    dst = _make_gis("https://dst.example.com")
+
+    bad_path = tmp_path / "nonexistent_dir" / "out.csv"
+
+    with pytest.raises(ValueError, match="CSV output directory does not exist"):
+        migrate_content(source_gis=src, destination_gis=dst, url_csv_path=bad_path)
+
+
+def test_migrate_content_csv_excludes_failed_items(tmp_path):
+    """T013: Failed items are excluded from the CSV; only successfully cloned items appear."""
+    import pandas as pd
+
+    good_item = _make_item_with_url("Good Map", "Web Map", "id_good", url="https://src/good")
+    bad_item = _make_item_with_url("Bad Map", "Web Map", "id_bad", url="https://src/bad")
+
+    cloned_item = MagicMock()
+    cloned_item.url = "https://dst/good"
+
+    src = _make_gis("https://src.example.com", items=[good_item, bad_item])
+    dst = _make_gis("https://dst.example.com")
+
+    call_count = {"n": 0}
+
+    def clone_side_effect(items, folder):
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            return [cloned_item]  # first item succeeds
+        raise RuntimeError("clone error")  # second item fails
+
+    dst.content.clone_items.side_effect = clone_side_effect
+
+    csv_out = tmp_path / "out.csv"
+    result = migrate_content(source_gis=src, destination_gis=dst, url_csv_path=csv_out)
+
+    assert csv_out.exists()
+    df = pd.read_csv(csv_out)
+    assert len(df) == 1
+    assert df.iloc[0]["name"] == "Good Map"
+    assert result.migrated == 1
+    assert result.failed == 1
+

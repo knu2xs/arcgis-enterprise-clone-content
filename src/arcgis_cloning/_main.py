@@ -183,6 +183,7 @@ def migrate_content(
     resume: bool = False,
     query: str | None = None,
     max_items: int | None = None,
+    url_csv_path: Path | str | None = None,
 ) -> MigrationResult:
     """Migrate ArcGIS portal content from a source portal to a destination portal.
 
@@ -219,13 +220,18 @@ def migrate_content(
             returns all items accessible to the authenticated source user.
         max_items: Optional cap on the number of source items to process. ``None`` means
             no limit. Primarily intended for safety checks and testing.
+        url_csv_path: Optional path for a CSV file that records the original and updated
+            URLs of every successfully migrated item. When ``None`` (default), no CSV is
+            written. The CSV contains columns ``name``, ``type``, ``original_url``, and
+            ``updated_url``. The parent directory must already exist.
 
     Returns:
         MigrationResult: Dataclass with ``migrated``, ``skipped``, ``failed``, and
             ``failures`` fields summarising the migration outcome.
 
     Raises:
-        ValueError: If the source and destination portal URLs are identical.
+        ValueError: If the source and destination portal URLs are identical, or if
+            ``url_csv_path`` is provided but its parent directory does not exist.
         KeyError: If credentials for ``source_env`` or ``destination_env`` are missing
             from ``secrets.yml`` when a pre-built ``GIS`` object is not supplied.
         RuntimeError: If the connection to either portal fails.
@@ -233,6 +239,7 @@ def migrate_content(
     logger.debug(
         f"migrate_content called: source_env={source_env!r}, destination_env={destination_env!r}, "
         f"resume={resume}, query={query!r}, max_items={max_items}, "
+        f"url_csv_path={url_csv_path!r}, "
         f"source_gis={'<provided>' if source_gis is not None else None}, "
         f"destination_gis={'<provided>' if destination_gis is not None else None}"
     )
@@ -252,6 +259,14 @@ def migrate_content(
         logger.critical(msg)
         raise ValueError(msg)
 
+    # --- Pre-flight: validate CSV output directory exists ---
+    if url_csv_path is not None:
+        csv_path = Path(url_csv_path)
+        if not csv_path.parent.exists():
+            msg = f"CSV output directory does not exist: '{csv_path.parent}'"
+            logger.error(msg)
+            raise ValueError(msg)
+
     # --- Discover source items ---
     items = _get_all_items(src_gis, query, max_items)
     total = len(items)
@@ -265,6 +280,13 @@ def migrate_content(
         logger.warning(
             f"No items found in source portal for query={query!r}. Nothing to migrate."
         )
+        if url_csv_path is not None:
+            csv_path = Path(url_csv_path)
+            logger.debug(f"Writing empty URL mapping CSV: {csv_path} (0 rows)")
+            pd.DataFrame(columns=["name", "type", "original_url", "updated_url"]).to_csv(
+                csv_path, index=False
+            )
+            logger.info(f"URL mapping CSV written: {csv_path}")
         return result
 
     # --- Resume: build destination index ---
@@ -274,7 +296,8 @@ def migrate_content(
         logger.debug(f"Resume mode active: {len(dest_index)} items already in destination")
 
     # --- Per-item migration loop with progress tracking ---
-    for n, item in enumerate(tqdm(items, start=1, total=total, desc="Migrating items"), start=1):
+    url_rows: list[dict] = []
+    for n, item in enumerate(tqdm(items, total=total, desc="Migrating items"), start=1):
         title = item.title
         item_type = item.type
         item_id = item.itemid
@@ -296,10 +319,17 @@ def migrate_content(
         logger.info(f"Migrating item {n} of {total}: {title} ({item_type})")
         t0 = time.perf_counter()
         try:
-            dest_gis.content.clone_items(items=[item], folder=folder_name)
+            cloned = dest_gis.content.clone_items(items=[item], folder=folder_name)
             # TODO (post-clone WARNING): compare cloned item properties against source
             elapsed = time.perf_counter() - t0
             logger.debug(f"Cloned '{title}' ({item_type}) in {elapsed:.2f}s")
+            dest_url = cloned[0].url if cloned else None
+            url_rows.append({
+                "name": title,
+                "type": item_type,
+                "original_url": item.url or "",
+                "updated_url": dest_url or "",
+            })
             result.migrated += 1
         except Exception as e:
             msg = f"Failed to clone '{title}' ({item_type}, id={item_id}): {e}"
@@ -313,4 +343,14 @@ def migrate_content(
         f"Migration complete | migrated={result.migrated} | "
         f"skipped={result.skipped} | failed={result.failed}"
     )
+
+    # --- Write URL mapping CSV if requested ---
+    if url_csv_path is not None:
+        csv_path = Path(url_csv_path)
+        logger.debug(f"Writing URL mapping CSV: {csv_path} ({len(url_rows)} rows)")
+        pd.DataFrame(url_rows, columns=["name", "type", "original_url", "updated_url"]).to_csv(
+            csv_path, index=False
+        )
+        logger.info(f"URL mapping CSV written: {csv_path}")
+
     return result

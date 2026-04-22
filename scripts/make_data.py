@@ -10,6 +10,7 @@ logger writing a full DEBUG-level audit trail to
 This script is a thin entry point — no business logic lives here.
 """
 # import core Python libraries
+import argparse
 import logging
 import sys
 from datetime import datetime
@@ -42,11 +43,28 @@ from arcgis_cloning import migrate_content
 
 if __name__ == '__main__':
 
+    # --- CLI argument parsing ---
+    parser = argparse.ArgumentParser(description="Run ArcGIS portal content migration.")
+    parser.add_argument(
+        "--csv",
+        action="store_true",
+        default=True,
+        help="Write a URL mapping CSV alongside the log file (clone_content_YYMMDDHHMM.csv).",
+    )
+    parser.add_argument(
+        "--no-csv",
+        dest="csv",
+        action="store_false",
+        help="Disable URL mapping CSV output.",
+    )
+    args = parser.parse_args()
+
     # --- Log file setup (FR-002, FR-003) ---
     date_string = datetime.now().strftime("%y%m%d%H%M")  # YYMMDDHHMM
     log_dir = DIR_PRJ / 'data' / 'logs'
     log_dir.mkdir(parents=True, exist_ok=True)
     log_file = log_dir / f'clone_content_{date_string}.log'
+    csv_file = log_dir / f'clone_content_{date_string}.csv' if args.csv else None
 
     # --- Logging bootstrap (FR-007) ---
     # Load config to get the desired console log level; fall back to DEBUG
@@ -71,10 +89,16 @@ if __name__ == '__main__':
         f'Starting migration | source_env={source_env!r} | '
         f'destination_env={destination_env!r} | log={log_file}'
     )
+    if csv_file:
+        logger.info(f'CSV output: {csv_file}')
 
     # --- Run migration (FR-001) ---
     try:
-        result = migrate_content(source_env=source_env, destination_env=destination_env)
+        result = migrate_content(
+            source_env=source_env,
+            destination_env=destination_env,
+            url_csv_path=csv_file,
+        )
         logger.info(
             f'Migration complete: migrated={result.migrated}, '
             f'skipped={result.skipped}, failed={result.failed}'
