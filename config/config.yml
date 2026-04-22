@@ -9,7 +9,7 @@
 #
 # Environment-specific settings live under the environments key.  Set the
 # ENVIRONMENT constant in src/arcgis_cloning/config.py
-# (or the PROJECT_ENV environment variable) to switch between dev / test / prod.
+# (or the PROJECT_ENV environment variable) to switch between source / destination.
 # =============================================================================
 
 project:
@@ -21,7 +21,7 @@ project:
 # Environment-specific settings
 # ---------------------------------------------------------------------------
 # The special "default" section provides fallback values for any key that is
-# not explicitly defined in a named environment (dev / test / prod).
+# not explicitly defined in a named portal environment (source / destination).
 # Merge order: top-level keys → default → <active environment>.
 # Only add a key to a named environment when it must differ from the default.
 # ---------------------------------------------------------------------------
@@ -33,16 +33,11 @@ environments:
     data:
       input: "data/raw/input_data.csv"
       output: "data/processed/processed.gdb/output_data"
+    migration:
+      source_env: "source"
+      destination_env: "destination"
 
-  dev:
-    # inherits all defaults; override only what differs
-    logging:
-      level: DEBUG
+  source:
 
-  test:
-    logging:
-      level: INFO
+  destination:
 
-  prod:
-    logging:
-      level: WARNING
