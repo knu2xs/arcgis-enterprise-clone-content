@@ -49,7 +49,7 @@ GOTO %1
 
 :: Perform data preprocessing steps contained in the make_data.py script.
 :data
-    CALL conda run -p %CONDA_DIR% python scripts/make_data.py
+    CALL conda run --no-capture-output -p %ARCGIS_PRO_PYTHON% python scripts/make_data.py
     GOTO end
 
 :: Delete all compiled Python files

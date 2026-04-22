@@ -61,7 +61,7 @@ $Tasks = [ordered]@{
     data = @{
         Desc   = "Run data preprocessing (scripts/make_data.py)"
         Action = {
-            conda run -p $CondaDir python scripts/make_data.py
+            conda run --no-capture-output -p $ArcGISProPython python scripts/make_data.py
         }
     }
 

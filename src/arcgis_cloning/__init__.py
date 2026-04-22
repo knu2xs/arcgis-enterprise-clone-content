@@ -12,6 +12,3 @@ from . import utils
 from ._main import migrate_content, MigrationResult
 
 __all__ = ["config", "utils", "migrate_content", "MigrationResult"]
-
-# configure package-level logging
-logger = utils.get_logger("arcgis_cloning", level="DEBUG", add_stream_handler=False)
