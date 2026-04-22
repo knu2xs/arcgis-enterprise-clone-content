@@ -20,6 +20,7 @@ import arcgis_cloning
 import arcgis_cloning.config as cfg_module
 from arcgis_cloning.config import load_config, get_available_environments
 from arcgis_cloning import migrate_content, MigrationResult
+from arcgis_cloning._main import _resolve_folder_name
 
 
 def test_example():
@@ -327,6 +328,37 @@ def test_migrate_content_root_item_skips_folder_creation():
     dst.content.folders.create.assert_not_called()
 
 
+def test_resolve_folder_name_uses_prebuilt_folder_map():
+    item = _make_item("Map A", "Web Map", owner_folder="folder123")
+    folder_name = _resolve_folder_name(item, {"folder123": "My Folder"})
+    assert folder_name == "My Folder"
+
+
+def test_migrate_content_builds_source_folder_map_once():
+    class _SourceUser:
+        def __init__(self, folders):
+            self._folders = folders
+            self.access_count = 0
+
+        @property
+        def folders(self):
+            self.access_count += 1
+            return self._folders
+
+    items = [
+        _make_item("Map A", "Web Map", "id_a", owner_folder="folder123"),
+        _make_item("Map B", "Web Map", "id_b", owner_folder="folder123"),
+    ]
+    src = _make_gis("https://src.example.com", items=items)
+    src_user = _SourceUser([{"id": "folder123", "title": "My Folder"}])
+    src.users.me = src_user
+    dst = _make_gis("https://dst.example.com")
+
+    migrate_content(source_gis=src, destination_gis=dst)
+
+    assert src_user.access_count == 1
+
+
 # ---------------------------------------------------------------------------
 # Feature 003 — make_data.py config fallback and exit-code tests
 # ---------------------------------------------------------------------------
@@ -493,4 +525,3 @@ def test_migrate_content_csv_excludes_failed_items(tmp_path):
     assert df.iloc[0]["name"] == "Good Map"
     assert result.migrated == 1
     assert result.failed == 1
-
