@@ -1,21 +1,78 @@
 # ArcGIS Enterprise Clone Content
 
 <!--start-->
-Useful tooling for cloning ArcGIS Enterprise content.
 
-## Getting Started
+## What it does
 
-1 - Clone this repo.
+**ArcGIS Enterprise Clone Content** is a Python tool for migrating content between
+ArcGIS portals (ArcGIS Enterprise or ArcGIS Online). Point it at a source and a
+destination portal and it clones all accessible items — preserving folder structure
+and handling errors per-item so one bad item never stops the run.
 
-2 - Create an environment with the requirements.
-    
+Key capabilities:
+
+- **Fresh run** — clone everything from source to destination.
+- **Resume mode** — skip items already present in the destination (matched by title
+  and type), so interrupted runs can be continued safely.
+- **Folder mirroring** — recreates the source owner's folder structure in the
+  destination portal.
+- **Structured logging** — a full DEBUG-level audit trail is written to a timestamped
+  log file at `data/logs/clone_content_YYMMDDHHMM.log`.
+- **Failure isolation** — per-item failures are captured and reported without stopping
+  the migration; inspect `MigrationResult.failures` for details.
+
+## Prerequisites
+
+- **ArcGIS Pro** (provides the `arcgis` Python package and `arcpy`) — or the
+  standalone **ArcGIS API for Python** in a compatible conda environment.
+- **Portal credentials** — source and destination portal connection details stored in
+  `config/secrets.yml` (copied from `config/secrets_template.yml`).
+
+## Quick Start
+
+**1. Configure credentials**
+
+```bash
+cp config/secrets_template.yml config/secrets.yml
 ```
-        > make env
+
+Open `config/secrets.yml` and fill in your portal details:
+
+```yaml
+source:
+  profile: ""       # ArcGIS named profile (takes precedence if set)
+  url: "https://source-portal.example.com/arcgis"
+  username: "your_source_username"
+  password: "your_source_password"
+
+destination:
+  profile: ""
+  url: "https://destination-portal.example.com/arcgis"
+  username: "your_destination_username"
+  password: "your_destination_password"
 ```
 
-3 - Start Building - If you are more into Python, a good place to start is `jupyter lab` from the root of the project, and 
-  start experimenting with Jupyter in the `./notebooks` directory, and move code logic to the `./src` directory. If GIS is 
-  more your schtick, open the project `./arcgis/arcgis-enterprise-clone-content.aprx`.
+**2. (Optional) Adjust portal environment names**
+
+The default source and destination environment keys are `source` and `destination`,
+matching `secrets.yml`. To use different names, edit `config/config.yml`:
+
+```yaml
+environments:
+  default:
+    migration:
+      source_env: "source"       # must match a key in secrets.yml
+      destination_env: "destination"
+```
+
+**3. Run the migration (CLI)**
+
+```bash
+make data
+```
+
+A timestamped log is written to `data/logs/clone_content_YYMMDDHHMM.log`.
+The final console line shows: `Migration complete: migrated=N, skipped=N, failed=N`.
 <!--end-->
 
 <p><small>Project based on the <a target="_blank" href="https://github.com/knu2xs/cookiecutter-geoai">cookiecutter 

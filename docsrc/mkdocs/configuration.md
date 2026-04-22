@@ -26,41 +26,40 @@ The configuration file has two parts:
 
 ```yaml
 project:
-  name: "my-project"
-  title: "My Project"
-  description: "A short description."
+  name: "arcgis-enterprise-clone-content"
+  title: "ArcGIS Enterprise Clone Content"
+  description: "Clone content between ArcGIS portals."
 
 environments:
 
-  dev:
+  default:
     logging:
       level: DEBUG
     data:
       input: "data/raw/input_data.csv"
       output: "data/processed/processed.gdb/output_data"
+    migration:
+      source_env: "source"          # key in secrets.yml for the source portal
+      destination_env: "destination" # key in secrets.yml for the destination portal
 
-  test:
+  source:
+    logging:
+      level: DEBUG
+
+  destination:
     logging:
       level: INFO
-    data:
-      input: "data/raw/input_data.csv"
-      output: "data/processed/processed.gdb/output_data"
-
-  prod:
-    logging:
-      level: WARNING
-    data:
-      input: "data/raw/input_data.csv"
-      output: "data/processed/processed.gdb/output_data"
 ```
 
 When the configuration is loaded, the active environment's section is **deep-merged**
 onto the shared settings, so you only need to specify what differs per environment.
+The `default` block provides base values that all named environments inherit.
 
-!!! tip "Custom environments"
+!!! tip "Custom portal environment names"
     The available environments are **introspected** from the keys under
-    `environments` in `config.yml`. To add a `staging` environment, simply add
-    a `staging:` block — the config loader will recognise it automatically.
+    `environments` in `config.yml`. If your organisation names its ArcGIS portals
+    differently (e.g. `prod_portal` and `dr_portal`), add matching blocks here and
+    update `migration.source_env` and `migration.destination_env` accordingly.
 
 ## Secrets — `secrets.yml`
 
@@ -71,17 +70,29 @@ version control.
 2. Fill in your actual values.
 
 ```yaml
-esri:
-  gis_url: "https://arcgis.com"
-  gis_profile: "my_profile"
+source:
+  profile: ""        # ArcGIS named profile (takes precedence over url/username/password if set)
+  url: "https://source-arcgis-enterprise.example.com/arcgis"
+  username: "your_source_username"
+  password: "your_source_password"
+
+destination:
+  profile: ""
+  url: "https://destination-arcgis-enterprise.example.com/arcgis"
+  username: "your_destination_username"
+  password: "your_destination_password"
 ```
+
+!!! tip "Profile vs. URL authentication"
+    If `profile` is set to a non-empty string, `url`, `username`, and `password` are
+    ignored. Set up a named profile via ArcGIS Pro or the ArcGIS API for Python.
 
 !!! warning
     `secrets.yml` is listed in `.gitignore`. **Never commit real credentials.**
 
 ## Switching Environments
 
-The active environment defaults to **`dev`**. There are two ways to switch:
+The active environment defaults to **`source`**. There are two ways to switch:
 
 ### Option 1 — Environment Variable
 
@@ -90,14 +101,14 @@ Set the `PROJECT_ENV` variable before running any script or notebook:
 === "PowerShell"
 
     ```powershell
-    $env:PROJECT_ENV = "prod"
+    $env:PROJECT_ENV = "destination"
     python -m scripts.make_data
     ```
 
 === "Bash / macOS"
 
     ```bash
-    export PROJECT_ENV=prod
+    export PROJECT_ENV=destination
     python -m scripts.make_data
     ```
 
@@ -106,7 +117,7 @@ Set the `PROJECT_ENV` variable before running any script or notebook:
 Open `src/arcgis_cloning/config.py` and change the default value:
 
 ```python
-ENVIRONMENT: str = os.environ.get("PROJECT_ENV", "dev")  # change "dev" → "test" or "prod"
+ENVIRONMENT: str = os.environ.get("PROJECT_ENV", "source")  # change to "destination" or a custom portal name
 ```
 
 ## Using Configuration in Python
@@ -146,8 +157,8 @@ config_path = Path.cwd().parent / "config" / "config.yml"
 with open(config_path, encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
 
-# access the dev environment settings
-env = cfg["environments"]["dev"]
+# access the source environment settings
+env = cfg["environments"]["source"]
 print(env["logging"]["level"])
 ```
 

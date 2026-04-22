@@ -55,7 +55,7 @@ Credentials and secrets MUST be read from `config/secrets.yml` via the `secrets`
 - Hardcoding paths, URLs, or environment-specific strings in source code is PROHIBITED.
 - Use `pathlib.Path` for all file-system paths; string concatenation for paths is PROHIBITED.
 - The active environment is selected via the `PROJECT_ENV` environment variable (default:
-  `"dev"`). Switch environments at the shell; do not modify `config.py` for local overrides.
+  `"source"`). Switch environments at the shell; do not modify `config.py` for local overrides.
 - Never commit `config/secrets.yml` to version control. Add new secrets to
   `config/secrets_template.yml` with placeholder values alongside the real entry.
 

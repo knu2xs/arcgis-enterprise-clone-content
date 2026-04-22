@@ -5,6 +5,8 @@ site_dir: ../docs
 
 nav:
   - Home: index.md
+  - Quickstart: quickstart.md
+  - Usage: usage.md
   - Configuration: configuration.md
   - API: api.md
   - Cookiecutter Reference: cookiecutter_reference.md
@@ -96,9 +98,6 @@ plugins:
       # explicitly enable generation of objects.ini facilitating intersphinx mapping
       enable_inventory: true
 
-      # optional: do not show the root heading of the documented module
-      show_root_heading: false
-
       handlers:
         python:
 
@@ -114,3 +113,4 @@ plugins:
           # use Google docstrings style
           options:
             docstring_style: google
+            show_root_heading: false
